@@ -30,7 +30,7 @@ jobs:
   connect:
     name: Connect GitHub OIDC
     if: inputs.connect == true && github.ref == 'refs/heads/boringcache-validation'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,7 +46,7 @@ jobs:
 
   cargo-uncached:
     name: No cache cargo uncached
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     if: inputs.connect != true && github.ref == 'refs/heads/boringcache-validation'
     steps:
@@ -87,7 +87,7 @@ jobs:
           cargo nextest run --no-fail-fast --workspace --exclude tcl-irule-test --exclude f5-cli --exclude tcl-lsp-server --exclude tcl-fuzz --all-features
           printf "workload_seconds=%s\n" "$((SECONDS - started))" > "$RUNNER_TEMP/validation/timing.txt"
       - name: Run workspace doctests
-        run: cargo test --doc --workspace --all-features
+        run: cargo test --doc --workspace --all-features --no-fail-fast
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -100,7 +100,7 @@ jobs:
 
   cargo-cold:
     name: BoringCache cargo cold
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     if: inputs.connect != true && github.ref == 'refs/heads/boringcache-validation'
     steps:
@@ -144,7 +144,7 @@ jobs:
           trust-policy: publish
           fail-on-cache-error: true
       - name: Run workspace doctests
-        run: cargo test --doc --workspace --all-features
+        run: cargo test --doc --workspace --all-features --no-fail-fast
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -158,7 +158,7 @@ jobs:
 
   cargo-warm:
     name: BoringCache cargo warm
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     if: inputs.connect != true && github.ref == 'refs/heads/boringcache-validation'
     needs: cargo-cold
@@ -203,7 +203,7 @@ jobs:
           trust-policy: restore
           fail-on-cache-error: true
       - name: Run workspace doctests
-        run: cargo test --doc --workspace --all-features
+        run: cargo test --doc --workspace --all-features --no-fail-fast
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
