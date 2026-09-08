@@ -255,6 +255,12 @@ The proof that completes its world/effect half is
 the world-state contents/absence lattice, the typed per-site dispatch-stability
 proof, and the entry contract that together gate stable-call CSE (`O105`).
 
+The dataflow axis — how a command invocation transforms the constant
+lattice — is designed in
+[compiler/value-transfers.md](compiler/value-transfers.md), a **proposal**
+for issue #1943 covering the registry descriptor, its SpecTcl authoring
+surface, and the per-pass consequences.
+
 ## Runtime internals
 
 - [runtime/namespace-tree.md](runtime/namespace-tree.md) — design for
