@@ -1,0 +1,18 @@
+workspace = "boringcache/tcl-lsp-onboarding"
+
+[entries.cargo-target]
+kind = "cargo-target"
+tag = "hosted-tests"
+path = "target"
+
+[profiles.cargo]
+entries = ["cargo-registry-cache", "cargo-registry-index", "cargo-git-db", "cargo-target"]
+
+[adapters.cargo]
+profiles = ["cargo"]
+compiler-cache = "sccache"
+command = ["cargo", "nextest", "run", "--no-fail-fast", "--workspace", "--exclude", "tcl-irule-test", "--exclude", "f5-cli", "--exclude", "tcl-lsp-server", "--exclude", "tcl-fuzz", "--all-features"]
+fail-on-cache-error = true
+
+[adapters.sccache]
+tag = "hosted-tests-compiler"

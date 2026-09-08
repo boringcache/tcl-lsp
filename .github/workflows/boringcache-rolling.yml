@@ -1,0 +1,83 @@
+name: BoringCache rolling validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      cli_version:
+        description: Optional exact BoringCache CLI release or prerelease tag
+        required: false
+        default: ""
+        type: string
+  push:
+    branches: [boringcache-validation]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: boringcache-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+
+jobs:
+  cargo-commit:
+    name: BoringCache cargo commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Advance upstream to ')
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Record source and runner
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/validation"
+          git rev-parse HEAD > "$RUNNER_TEMP/validation/validation-commit.txt"
+          cat .github/boringcache-upstream > "$RUNNER_TEMP/validation/upstream-commit.txt"
+          uname -a > "$RUNNER_TEMP/validation/runner.txt"
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          toolchain: stable
+          cache: false
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@e67fa11c4b9316fa714ddf0abed07a0c3143b95b # v2.87.4
+        with:
+          tool: nextest@0.9.143,sccache@0.17.0
+      - name: Install exact Tcl 9.0 reference interpreter
+        env:
+          TCL_LSP_TCL_BIN_DIR: ${{ runner.temp }}/tcl-reference-bin
+        run: |
+          make ensure-tcl90-reference
+          . scripts/dev/tcl-reference-toolchains.sh
+          tcl_reference_load_toolchains "$PWD"
+          tclsh="$(tcl_reference_resolve_tclsh 9.0)"
+          printf 'TCL_LSP_TCLSH90=%s\n' "$tclsh" >> "$GITHUB_ENV"
+      - name: Record Rust toolchain
+        run: rustc -Vv | tee "$RUNNER_TEMP/validation/toolchain.txt"
+      - name: BoringCache cargo
+        id: cache
+        uses: boringcache/one@e4ead12dabc993eba201c402a82e396166dade03 # v1.20.4
+        with:
+          cli-version: ${{ inputs.cli_version }}
+          mode: cargo
+          trust-policy: publish
+          fail-on-cache-error: true
+      - name: Run workspace doctests
+        run: cargo test --doc --workspace --all-features
+      - name: Retain validation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cargo-commit-${{ github.run_id }}-${{ github.run_attempt }}
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/validation
+            ${{ steps.cache.outputs.evidence-path }}
+          if-no-files-found: error
